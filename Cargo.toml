@@ -1,0 +1,9 @@
+[package]
+name = "git-backup"
+version = "0.1.0"
+authors = ["James Wilson <james@jsdw.me>"]
+edition = "2018"
+
+[dependencies]
+hyper = "0.13.0-alpha.1"
+structopt = "0.3.1"
