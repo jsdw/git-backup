@@ -6,6 +6,6 @@ pub trait Service {
 }
 
 pub struct Repository {
-    git_url: String,
-    name: String
+    pub git_url: String,
+    pub name: String
 }
