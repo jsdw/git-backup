@@ -2,8 +2,10 @@
 mod error;
 mod services;
 
+use error::Error;
 use std::path::PathBuf;
 use structopt::StructOpt;
+use services::{ Github, Service };
 
 #[derive(StructOpt, Debug)]
 #[structopt(name = "git-backup")]
@@ -24,7 +26,23 @@ struct Opts {
     token: Option<String>
 }
 
-fn main() {
+fn main() -> Result<(),Error> {
     let opts = Opts::from_args();
     println!("{:#?}", opts);
+
+    let service: Option<Box<dyn Service>> =
+        if let Some(gh) = Github::new(opts.url, opts.token, opts.public) {
+            Some(Box::new(gh))
+        } else {
+            None
+        };
+
+    let service = service.ok_or_else(|| err!("URL not recognised"))?;
+
+    let repos = service.list_repositories()?;
+
+    println!("Repos: {:?}", repos);
+    println!("Backing up {} repos", repos.len());
+
+    Ok(())
 }

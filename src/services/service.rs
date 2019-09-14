@@ -5,6 +5,7 @@ pub trait Service {
     fn list_repositories(&self) -> Result<Vec<Repository>,Error>;
 }
 
+#[derive(Clone,Debug,PartialEq,Eq)]
 pub struct Repository {
     pub git_url: String,
     pub name: String
