@@ -46,3 +46,19 @@ fn main() -> Result<(),Error> {
 
     Ok(())
 }
+
+// // The following clones a repo (even a private one) using the HTTPS URL
+// // and using the private access token for auth, so no need for separate
+// // SSH keys setup. The credentials helper is kept in config so we can reuse
+// // for updating the repo easily.
+//
+// export GIT_USER=username
+// export GIT_PASSWORD=personalAccessToken
+// git clone \
+//     --bare \
+//     --config credential.helper='!f() { sleep 1; echo "username=${GIT_USER}"; echo "password=${GIT_PASSWORD}"; }; f' \
+//     https://github.com/username/repo
+//
+// // To update the bare repo from some URL (above env vars needed) (do we need --all?):
+//
+// git fetch --prune https://github.com/username/repo
