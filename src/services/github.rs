@@ -131,7 +131,7 @@ impl Service for Github {
 
 static GRAPHQL_QUERY: &str = "
     query($cursor: String, $query: String!) {
-        search(query:$query, type:REPOSITORY,first:100,after:$cursor) {
+        search(query:$query, type:REPOSITORY, first:100, after:$cursor) {
             pageInfo {
                 endCursor
             }
