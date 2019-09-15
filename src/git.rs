@@ -19,21 +19,24 @@ pub fn sync_repository(opts: Opts) -> Result<(),Error> {
 
     // Is the folder already a bare repo? It is if
     // it contains a file called HEAD.
-    let mut dest = opts.destination;
-    dest.push("HEAD");
+    let mut dest_head = opts.destination.clone();
+    dest_head.push("HEAD");
+    let is_repo = dest_head.is_file();
 
     // Sync or clone depending on whether already a repo:
-    let output = if dest.is_file() {
+    let output = if is_repo {
         Command::new("sh")
             .arg("-c").arg(git_fetch_cmd(opts.repo_url))
             .env("GIT_USER", opts.username)
             .env("GIT_PASSWORD", opts.password)
+            .current_dir(opts.destination)
             .output()?
     } else {
         Command::new("sh")
             .arg("-c").arg(git_clone_cmd(opts.repo_url))
             .env("GIT_USER", opts.username)
             .env("GIT_PASSWORD", opts.password)
+            .current_dir(opts.destination)
             .output()?
     };
 
@@ -46,7 +49,10 @@ fn git_clone_cmd(repo_url: &str) -> String {
             --bare \
             --config credential.helper='!f() { sleep 1; echo "username=${GIT_USER}"; echo "password=${GIT_PASSWORD}"; }; f' \
     "#);
+    // repo to clone:
     cmd.push_str(repo_url);
+    // clone into current directory:
+    cmd.push_str(" .");
     cmd
 }
 

@@ -45,12 +45,12 @@ fn main() -> Result<(),Error> {
     let repos = service.list_repositories()?;
     let username = service.username();
 
-    println!("Repos: {:?}", repos);
     println!("Backing up {} repos", repos.len());
 
     for repo in repos {
+        println!("syncing {}", repo.name);
         let mut repo_path = dest_path.clone();
-        repo_path.push(repo.git_url.clone());
+        repo_path.push(repo.name.clone());
         git::sync_repository(git::Opts {
             repo_url: &repo.git_url,
             username: &username,
