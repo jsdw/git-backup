@@ -26,7 +26,7 @@ pub fn sync_repository(opts: Opts) -> Result<(),Error> {
     // Sync or clone depending on whether already a repo:
     let output = if is_repo {
         Command::new("sh")
-            .arg("-c").arg(git_fetch_cmd(opts.repo_url))
+            .arg("-c").arg(git_fetch_cmd())
             .env("GIT_USER", opts.username)
             .env("GIT_PASSWORD", opts.password)
             .current_dir(opts.destination)
@@ -56,8 +56,6 @@ fn git_clone_cmd(repo_url: &str) -> String {
     cmd
 }
 
-fn git_fetch_cmd(repo_url: &str) -> String {
-    let mut cmd = String::from("git fetch origin '*:*' --prune --prune-tags ");
-    cmd.push_str(repo_url);
-    cmd
+fn git_fetch_cmd() -> String {
+    String::from("git fetch origin '*:*' --prune --prune-tags")
 }
