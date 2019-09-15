@@ -57,7 +57,7 @@ fn git_clone_cmd(repo_url: &str) -> String {
 }
 
 fn git_fetch_cmd(repo_url: &str) -> String {
-    let mut cmd = String::from("git fetch --prune --force");
+    let mut cmd = String::from("git fetch origin '*:*' --prune --prune-tags");
     cmd.push_str(repo_url);
     cmd
 }
