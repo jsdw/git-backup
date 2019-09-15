@@ -26,22 +26,25 @@ struct Opts {
     token: String
 }
 
-fn main() -> Result<(),Error> {
+fn main() {
+    if let Err(e) = run() {
+        eprintln!("Error: {}", e);
+    }
+}
+
+fn run() -> Result<(),Error> {
     let opts = Opts::from_args();
-
-    println!("{:#?}", opts);
-
-    let dest_path = opts.backup_location
-        .unwrap_or_else(|| std::env::current_dir().unwrap());
-
     let service: Option<Box<dyn Service>> =
-        if let Some(gh) = Github::new(opts.url, Some(opts.token.clone()), opts.public) {
+        if let Some(gh) = opts_to_github(&opts) {
             Some(Box::new(gh))
         } else {
             None
         };
 
-    let service = service.ok_or_else(|| err!("URL not recognised"))?;
+    let service = service
+        .ok_or_else(|| err!("Source '{}' not recognised", &opts.url))?;
+    let dest_path = opts.backup_location
+        .unwrap_or_else(|| std::env::current_dir().unwrap());
     let repos = service.list_repositories()?;
     let username = service.username();
 
@@ -60,4 +63,12 @@ fn main() -> Result<(),Error> {
     }
 
     Ok(())
+}
+
+fn opts_to_github(opts: &Opts) -> Option<Github> {
+    Github::new(
+        opts.url.clone(),
+        Some(opts.token.clone()),
+        opts.public
+    )
 }
