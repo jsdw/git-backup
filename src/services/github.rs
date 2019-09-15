@@ -47,6 +47,9 @@ impl Github {
 }
 
 impl Service for Github {
+    fn username(&self) -> String {
+        self.owner.to_owned()
+    }
     fn list_repositories(&self) -> Result<Vec<Repository>,Error> {
 
         // If only one repository was asked for, just return it:
