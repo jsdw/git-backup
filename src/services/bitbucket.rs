@@ -1,5 +1,4 @@
 use regex::Regex;
-use serde_json::json;
 use lazy_static::lazy_static;
 use crate::error::Error;
 use super::service::{ Service, Repository };
@@ -65,20 +64,22 @@ impl Service for Bitbucket {
         })?;
 
         let client = reqwest::Client::new();
-        let empty = Vec::new();
 
-        let mut url: String = format!("https://bitbucket.org/api/2.0/repositories/{user}", user=self.owner);
+        let mut maybe_url: Option<String> = Some(
+            format!("https://api.bitbucket.org/2.0/repositories/{user}?fields=next,values.slug,values.scm,values.links.clone,values.is_private,values.owner.nickname&role=owner", user=self.owner)
+        );
+        let empty = vec![];
         let mut repos = vec![];
 
-        let bearerToken = base64::encode(&format!("{user}:{token}", user=self.owner, token=token));
+        let bearer_token = base64::encode(&format!("{user}:{token}", user=self.owner, token=token));
 
         // Make as many queries as we need to gather together all of the
         // repositories (we can only obtain 100 at a time):
-        loop {
+        while let Some(url) = maybe_url {
 
             let mut res = client
                 .post(&url)
-                .header("Authorization", format!("bearer {}", bearerToken))
+                .header("Authorization", format!("bearer {}", bearer_token))
                 .send()
                 .map_err(|e| err!("There was a problem talking to bitbucket: {}", e))?;
 
@@ -91,74 +92,39 @@ impl Service for Bitbucket {
                 });
             }
 
+            // We convert our response back to a loosely typed JSON Value:
+            let data: serde_json::Value = res
+                .json()
+                .map_err(|_| err!("Invalid JSON response from Bitbucket"))?;
 
+            // Prepare the next page:
+            maybe_url = data["next"].as_str().map(|s| s.to_owned());
 
-            // // We make a request, sending our personal access token:
-            // let mut res = client
-            //     .post("https://api.github.com/graphql")
-            //     .header("Authorization", format!("bearer {}", token))
-            //     .json(&body)
-            //     .send()
-            //     .map_err(|e| err!(" talking to github: {}", e))?;
-
-            // // Return an error if the response was not successful:
-            // let status = res.status();
-            // if !status.is_success() {
-            //     return Err(match status.as_u16() {
-            //         401 => err!("Not authorized: is the personal access token that you provided valid?"),
-            //         _ => err!("Error talking to github: {} (code {})", status.canonical_reason().unwrap_or("Unknown"), status.as_str())
-            //     });
-            // }
-
-            // // We convert our response back to a loosely typed JSON Value:
-            // let data: serde_json::Value = res
-            //     .json()
-            //     .map_err(|_| err!("Invalid JSON response from Github"))?;
-
-            // // Iterate the list of repositories we find, converting to our
-            // // well typed Repository struct on the way:
-            // let data = &data["data"]["search"];
-            // let this_repos = data["nodes"].as_array().unwrap_or(&empty);
-            // for repo in this_repos {
-
-            //     let name = repo["name"].as_str().ok_or_else(|| err!("Invalid repo name"))?;
-            //     let url = repo["url"].as_str().ok_or_else(|| err!("Invalid repo URL"))?;
-
-            //     repos.push(Repository {
-            //         name: name.to_owned(),
-            //         git_url: url.to_owned()
-            //     })
-
-            // }
-
-            // // Do we have an endCursor? If so, use it to try pulling the next
-            // // set of results. If not, we're done so break:
-            // cursor = data["pageInfo"]["endCursor"].as_str().map(|s| s.to_owned());
-            // if cursor.is_none() {
-            //     break
-            // }
-
+            let repo_values = data["values"].as_array().unwrap_or(&empty);
+            for repo in repo_values {
+                // Ignore non-git repos:
+                if repo["scm"].as_str() != Some("git") {
+                    continue
+                }
+                // Extract the name and URL from the JSON:
+                let name = repo["slug"].as_str().ok_or_else(|| err!("Invalid repo name"))?;
+                let clone = repo["links"]["clone"].as_array().ok_or_else(|| err!("Can't get repo URL"))?;
+                let url = clone.into_iter()
+                    .find(|val| val["name"].as_str() == Some("https"))
+                    .ok_or_else(|| err!("Can't find HTTPS repo URL to clone from"))?
+                    ["href"].as_str()
+                    .ok_or_else(|| err!("Invalid clone URL"))?;
+                // Push to our repo list:
+                repos.push(Repository {
+                    name: name.to_owned(),
+                    git_url: url.to_owned()
+                })
+            }
         }
 
         Ok(repos)
     }
 }
-
-static GRAPHQL_QUERY: &str = "
-    query($cursor: String, $query: String!) {
-        search(query:$query, type:REPOSITORY, first:100, after:$cursor) {
-            pageInfo {
-                endCursor
-            }
-            nodes {
-                ... on Repository {
-                    url,
-                    name
-                }
-            }
-        }
-    }
-";
 
 #[cfg(test)]
 mod test {
@@ -168,37 +134,37 @@ mod test {
     #[test]
     fn test_valid_urls() {
         let urls = vec![
-            ("http://www.github.com/jsdw", "jsdw", None),
-            ("http://www.github.com/jsdw/git.backup", "jsdw", Some("git.backup")),
-            ("http://www.github.com/jsdw/git.backup.git", "jsdw", Some("git.backup")),
-            ("http://github.com/jsdw", "jsdw", None),
-            ("http://github.com/jsdw/git.backup", "jsdw", Some("git.backup")),
-            ("http://github.com/jsdw/git.backup.git", "jsdw", Some("git.backup")),
-            ("https://github.com/jsdw", "jsdw", None),
-            ("https://github/jsdw", "jsdw", None),
-            ("https://github.com/jsdw/git.backup", "jsdw", Some("git.backup")),
-            ("https://github.com/jsdw/git.backup.git", "jsdw", Some("git.backup")),
-            ("github.com/jsdw", "jsdw", None),
-            ("github/jsdw", "jsdw", None),
-            ("github.com/jsdw/git.backup", "jsdw", Some("git.backup")),
-            ("github.com/jsdw/git.backup.git", "jsdw", Some("git.backup")),
-            ("git@github.com:jsdw", "jsdw", None),
-            ("git@github.com:jsdw/git.backup", "jsdw", Some("git.backup")),
-            ("git@github.com:jsdw/git.backup.git", "jsdw", Some("git.backup")),
-            ("github.com:jsdw", "jsdw", None),
-            ("github:jsdw", "jsdw", None),
-            ("github.com:jsdw/git.backup", "jsdw", Some("git.backup")),
-            ("github.com:jsdw/git.backup.git", "jsdw", Some("git.backup")),
-            ("jsdw@github.com", "jsdw", None),
-            ("jsdw@github", "jsdw", None),
-            ("jsdw@github.com/git.backup", "jsdw", Some("git.backup")),
-            ("jsdw@github/git.backup", "jsdw", Some("git.backup")),
-            ("jsdw@github.com/git.backup.git", "jsdw", Some("git.backup")),
-            ("jsdw@github.com:git.backup", "jsdw", Some("git.backup")),
-            ("jsdw@github.com:git.backup.git", "jsdw", Some("git.backup")),
+            ("http://www.bitbucket.org/jsdw", "jsdw", None),
+            ("http://www.bitbucket.org/jsdw/git.backup", "jsdw", Some("git.backup")),
+            ("http://www.bitbucket.org/jsdw/git.backup.git", "jsdw", Some("git.backup")),
+            ("http://bitbucket.org/jsdw", "jsdw", None),
+            ("http://bitbucket.org/jsdw/git.backup", "jsdw", Some("git.backup")),
+            ("http://bitbucket.org/jsdw/git.backup.git", "jsdw", Some("git.backup")),
+            ("https://bitbucket.org/jsdw", "jsdw", None),
+            ("https://bitbucket/jsdw", "jsdw", None),
+            ("https://bitbucket.org/jsdw/git.backup", "jsdw", Some("git.backup")),
+            ("https://bitbucket.org/jsdw/git.backup.git", "jsdw", Some("git.backup")),
+            ("bitbucket.org/jsdw", "jsdw", None),
+            ("bitbucket/jsdw", "jsdw", None),
+            ("bitbucket.org/jsdw/git.backup", "jsdw", Some("git.backup")),
+            ("bitbucket.org/jsdw/git.backup.git", "jsdw", Some("git.backup")),
+            ("git@bitbucket.org:jsdw", "jsdw", None),
+            ("git@bitbucket.org:jsdw/git.backup", "jsdw", Some("git.backup")),
+            ("git@bitbucket.org:jsdw/git.backup.git", "jsdw", Some("git.backup")),
+            ("bitbucket.org:jsdw", "jsdw", None),
+            ("bitbucket:jsdw", "jsdw", None),
+            ("bitbucket.org:jsdw/git.backup", "jsdw", Some("git.backup")),
+            ("bitbucket.org:jsdw/git.backup.git", "jsdw", Some("git.backup")),
+            ("jsdw@bitbucket.org", "jsdw", None),
+            ("jsdw@bitbucket", "jsdw", None),
+            ("jsdw@bitbucket.org/git.backup", "jsdw", Some("git.backup")),
+            ("jsdw@bitbucket/git.backup", "jsdw", Some("git.backup")),
+            ("jsdw@bitbucket.org/git.backup.git", "jsdw", Some("git.backup")),
+            ("jsdw@bitbucket.org:git.backup", "jsdw", Some("git.backup")),
+            ("jsdw@bitbucket.org:git.backup.git", "jsdw", Some("git.backup")),
         ];
         for (url, owner, repo) in urls {
-            if let Some(gh) = Github::new(url.to_owned(), None, false) {
+            if let Some(gh) = Bitbucket::new(url.to_owned(), None) {
                 assert_eq!(gh.owner(), owner, "url {} expected owner {} but got {}", url, owner, gh.owner());
                 assert_eq!(gh.repo(), repo, "url {} expected repo {:?} but got {:?}", url, repo, gh.repo());
             } else {
