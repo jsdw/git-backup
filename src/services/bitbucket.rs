@@ -78,8 +78,8 @@ impl Service for Bitbucket {
         while let Some(url) = maybe_url {
 
             let mut res = client
-                .post(&url)
-                .header("Authorization", format!("bearer {}", bearer_token))
+                .get(&url)
+                .header("Authorization", format!("Basic {}", bearer_token))
                 .send()
                 .map_err(|e| err!("There was a problem talking to bitbucket: {}", e))?;
 
@@ -106,6 +106,7 @@ impl Service for Bitbucket {
                 if repo["scm"].as_str() != Some("git") {
                     continue
                 }
+
                 // Extract the name and URL from the JSON:
                 let name = repo["slug"].as_str().ok_or_else(|| err!("Invalid repo name"))?;
                 let clone = repo["links"]["clone"].as_array().ok_or_else(|| err!("Can't get repo URL"))?;
@@ -114,6 +115,7 @@ impl Service for Bitbucket {
                     .ok_or_else(|| err!("Can't find HTTPS repo URL to clone from"))?
                     ["href"].as_str()
                     .ok_or_else(|| err!("Invalid clone URL"))?;
+
                 // Push to our repo list:
                 repos.push(Repository {
                     name: name.to_owned(),
