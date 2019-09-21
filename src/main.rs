@@ -7,7 +7,7 @@ use error::Error;
 use rayon::prelude::*;
 use std::path::PathBuf;
 use structopt::StructOpt;
-use services::{ Github, Service };
+use services::{ Github, Bitbucket, Service };
 
 #[derive(StructOpt, Debug)]
 #[structopt(name = "git-backup", author = "James Wilson <james@jsdw.me>")]
@@ -19,9 +19,6 @@ struct Opts {
     /// the current working directory will be used
     #[structopt(name="destination", parse(from_os_str))]
     backup_location: Option<PathBuf>,
-    /// Only backup public respositories (may not need a token)
-    #[structopt(long="public-only")]
-    public: bool,
     /// An access token for the service you're trying to backup from.
     /// this can be provided via the environment variable GIT_TOKEN
     /// instead, but is required in one of those forms.
@@ -37,11 +34,13 @@ fn main() {
 
 fn run() -> Result<(),Error> {
 
+    // Check that we have a valid version of git installed:
     let git_version = git::version().map_err(|_| err!("Git does not appear to be installed"))?;
     if git_version < git::Version::new(2,0,0) {
         return Err(err!("Your version of git appears to be too old. This command requires at least 2.0.0"))
     }
 
+    // Prepare our options:
     let opts = Opts::from_args();
     let url = opts.url;
     let token = opts.token
@@ -50,13 +49,18 @@ fn run() -> Result<(),Error> {
     let dest_path = opts.backup_location
         .unwrap_or_else(|| std::env::current_dir().unwrap());
 
+    // Find a matching service:
     let service: Option<Box<dyn Service>> =
         if let Some(gh) = Github::new(
             url.clone(),
-            Some(token.clone()),
-            opts.public
+            Some(token.clone())
         ) {
             Some(Box::new(gh))
+        } else if let Some(bb) = Bitbucket::new(
+            url.clone(),
+            Some(token.clone())
+        ) {
+            Some(Box::new(bb))
         } else {
             None
         };
@@ -65,6 +69,7 @@ fn run() -> Result<(),Error> {
     let repos = service.list_repositories()?;
     let username = service.username();
 
+    // Perform the backup:
     println!("Backing up {} repos", repos.len());
     repos.into_par_iter().for_each(|repo| {
         println!("syncing {}", repo.name);
@@ -82,6 +87,7 @@ fn run() -> Result<(),Error> {
         }
 
     });
+    println!("Backup completed!");
 
     Ok(())
 }
