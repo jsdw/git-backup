@@ -56,7 +56,7 @@ pub fn sync_repository(opts: Opts) -> Result<(),Error> {
     let is_repo = dest_head.is_file();
 
     // Sync or clone depending on whether already a repo:
-    if is_repo {
+    let output = if is_repo {
         Command::new("sh")
             .arg("-c").arg(git_fetch_cmd())
             .env("GIT_USER", opts.username)
@@ -72,7 +72,11 @@ pub fn sync_repository(opts: Opts) -> Result<(),Error> {
             .output()?
     };
 
-    Ok(())
+    if !output.status.success() {
+        Err(err!("Git command did not exit successfully: \n\n{}\n", String::from_utf8_lossy(&output.stderr)))
+    } else {
+        Ok(())
+    }
 }
 
 fn git_clone_cmd(repo_url: &str) -> String {
