@@ -53,7 +53,7 @@ impl Service for Github {
         if let Some(repo) = &self.repository {
             return Ok(vec![
                 Repository {
-                    git_url: format!("https://github.com/{user}/{repo}", user=self.owner, repo=repo),
+                    git_url: format!("https://github.com/{user}/{repo}.git", user=self.owner, repo=repo),
                     name: repo.clone()
                 }
             ])

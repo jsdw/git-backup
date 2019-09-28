@@ -7,7 +7,7 @@ use error::Error;
 use rayon::prelude::*;
 use std::path::PathBuf;
 use structopt::StructOpt;
-use services::{ Github, Bitbucket, Service };
+use services::{ Github, GitLab, Bitbucket, Service };
 
 #[derive(StructOpt, Debug)]
 #[structopt(name = "git-backup", author = "James Wilson <james@jsdw.me>")]
@@ -61,6 +61,11 @@ fn run() -> Result<(),Error> {
             Some(token.clone())
         ) {
             Some(Box::new(bb))
+        } else if let Some(gl) = GitLab::new(
+            url.clone(),
+            Some(token.clone())
+        ) {
+            Some(Box::new(gl))
         } else {
             None
         };

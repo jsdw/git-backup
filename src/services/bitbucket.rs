@@ -52,7 +52,7 @@ impl Service for Bitbucket {
         if let Some(repo) = &self.repository {
             return Ok(vec![
                 Repository {
-                    git_url: format!("https://bitbucket.org/{user}/{repo}", user=self.owner, repo=repo),
+                    git_url: format!("https://bitbucket.org/{user}/{repo}.git", user=self.owner, repo=repo),
                     name: repo.clone()
                 }
             ])
@@ -60,7 +60,7 @@ impl Service for Bitbucket {
 
         // If no token was provided, we can't list every repo:
         let token = self.token.as_ref().ok_or_else(|| {
-            err!("A token must be provided to obtain a list of your Github repositories")
+            err!("A token must be provided to obtain a list of your Bitbucket repositories")
         })?;
 
         let client = reqwest::Client::new();
