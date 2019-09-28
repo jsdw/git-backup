@@ -50,26 +50,7 @@ fn run() -> Result<(),Error> {
         .unwrap_or_else(|| std::env::current_dir().unwrap());
 
     // Find a matching service:
-    let service: Option<Box<dyn Service>> =
-        if let Some(gh) = Github::new(
-            url.clone(),
-            Some(token.clone())
-        ) {
-            Some(Box::new(gh))
-        } else if let Some(bb) = Bitbucket::new(
-            url.clone(),
-            Some(token.clone())
-        ) {
-            Some(Box::new(bb))
-        } else if let Some(gl) = GitLab::new(
-            url.clone(),
-            Some(token.clone())
-        ) {
-            Some(Box::new(gl))
-        } else {
-            None
-        };
-    let service = service
+    let service = pick_service(url.clone(), token.clone())
         .ok_or_else(|| err!("Source '{}' not recognised", &url))?;
     let repos = service.list_repositories()?;
     let username = service.username();
@@ -95,4 +76,25 @@ fn run() -> Result<(),Error> {
     println!("Backup completed!");
 
     Ok(())
+}
+
+fn pick_service(url: String, token: String) -> Option<Box<dyn Service>> {
+    if let Some(gh) = Github::new(
+        url.clone(),
+        Some(token.clone())
+    ) {
+        Some(Box::new(gh))
+    } else if let Some(bb) = Bitbucket::new(
+        url.clone(),
+        Some(token.clone())
+    ) {
+        Some(Box::new(bb))
+    } else if let Some(gl) = GitLab::new(
+        url.clone(),
+        Some(token.clone())
+    ) {
+        Some(Box::new(gl))
+    } else {
+        None
+    }
 }
