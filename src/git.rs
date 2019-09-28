@@ -73,7 +73,7 @@ pub fn sync_repository(opts: Opts) -> Result<(),Error> {
     };
 
     if !output.status.success() {
-        Err(err!("Git command did not exit successfully: \n\n{}\n", String::from_utf8_lossy(&output.stderr)))
+        Err(err!("{}", String::from_utf8_lossy(&output.stderr).trim()))
     } else {
         Ok(())
     }

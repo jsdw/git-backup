@@ -1,5 +1,7 @@
 #[macro_use]
 mod error;
+#[macro_use]
+mod logging;
 mod services;
 mod git;
 
@@ -28,7 +30,7 @@ struct Opts {
 
 fn main() {
     if let Err(e) = run() {
-        eprintln!("Error: {}", e);
+        log_error!("{}", e);
     }
 }
 
@@ -55,10 +57,15 @@ fn run() -> Result<(),Error> {
     let repos = service.list_repositories()?;
     let username = service.username();
 
+    if repos.len() != 1 {
+        log_info!("Backing up {} repositories", repos.len());
+    } else {
+        log_info!("Backing up 1 repository");
+    }
+
     // Perform the backup:
-    println!("Backing up {} repos", repos.len());
     repos.into_par_iter().for_each(|repo| {
-        println!("syncing {}", repo.name);
+        log_info!("Syncing '{}'", repo.name);
         let mut repo_path = dest_path.clone();
         repo_path.push(format!("{}.git", repo.name));
 
@@ -69,11 +76,11 @@ fn run() -> Result<(),Error> {
             destination: &repo_path
         });
         if let Err(e) = sync_result {
-            eprintln!("Error syncing repository '{}': {}", repo_path.to_string_lossy(), e);
+            log_error!("Could not sync repository '{}': \n{}", repo_path.to_string_lossy(), e);
         }
 
     });
-    println!("Backup completed!");
+    log_info!("Backup completed!");
 
     Ok(())
 }
