@@ -1,8 +1,7 @@
 #[macro_export]
 macro_rules! log_info {
     ($($tt:tt)*) => ({
-        use colored::*;
-        println!("{} {}", "Info:".green(), format!($($tt)*));
+        println!($($tt)*);
     })
 }
 

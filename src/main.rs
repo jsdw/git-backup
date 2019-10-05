@@ -5,10 +5,12 @@ mod logging;
 mod services;
 mod git;
 
+use colored::*;
 use error::Error;
 use rayon::prelude::*;
 use std::path::PathBuf;
 use std::collections::HashSet;
+use std::sync::atomic::{ AtomicU64, Ordering };
 use structopt::StructOpt;
 use services::{ Github, GitLab, Bitbucket, Service };
 
@@ -68,14 +70,17 @@ fn run() -> Result<(),Error> {
     let username = service.username();
 
     if repos.len() != 1 {
-        log_info!("Backing up {} repositories", repos.len());
+        log_info!("{}", format!("Backing up {} repositories", repos.len()).blue().bold());
     } else {
-        log_info!("Backing up 1 repository");
+        log_info!("{}", "Backing up 1 repository".blue().bold());
     }
+
+    // Track non-fatal error count:
+    let error_count = AtomicU64::new(0);
 
     // Perform the backup:
     repos.par_iter().for_each(|repo| {
-        log_info!("Syncing '{}'", repo.name);
+        log_info!("{} {}", "Syncing".green(), repo.name);
         let mut repo_path = dest_path.clone();
         repo_path.push(repo_name_to_folder(&repo.name));
 
@@ -87,6 +92,7 @@ fn run() -> Result<(),Error> {
                 destination: &repo_path
             });
             if let Err(e) = sync_result {
+                error_count.fetch_add(1, Ordering::Relaxed);
                 log_error!("Could not sync repository '{}': \n{}", repo_path.to_string_lossy(), e);
             }
         }
@@ -126,16 +132,25 @@ fn run() -> Result<(),Error> {
                 continue
             }
             // Remove the folder and its contents (if not dry_run):
-            log_info!("Pruning {}", file_name);
+            log_info!("{} {}", "Pruning".yellow(), file_name);
             if !dry_run {
                 if let Some(err) = std::fs::remove_dir_all(entry.path()).err() {
+                    error_count.fetch_add(1, Ordering::Relaxed);
                     log_error!("Error pruning {}: {}", file_name, err);
                 }
             }
         }
     }
 
-    log_info!("Backup completed!");
+    // Log final summary:
+    let error_count = error_count.load(Ordering::Relaxed);
+    if error_count > 1 {
+        log_info!("{}", format!("Backup completed with {} errors", error_count).bold().red());
+    } else if error_count > 0 {
+        log_info!("{}", "Backup completed with 1 error".bold().red());
+    } else {
+        log_info!("{}", "Backup completed!".bold().green());
+    }
 
     Ok(())
 }
