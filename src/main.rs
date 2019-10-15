@@ -12,7 +12,7 @@ use std::path::PathBuf;
 use std::collections::HashSet;
 use std::sync::atomic::{ AtomicU64, Ordering };
 use structopt::StructOpt;
-use services::{ Github, GitLab, Bitbucket, Service };
+use services::{ GitHub, GitLab, Bitbucket, Service };
 
 #[derive(StructOpt, Debug)]
 #[structopt(name = "git-backup", author = "James Wilson <james@jsdw.me>")]
@@ -160,7 +160,7 @@ fn repo_name_to_folder(repo_name: &str) -> String {
 }
 
 fn pick_service(url: String, token: String) -> Option<Box<dyn Service>> {
-    if let Some(gh) = Github::new(
+    if let Some(gh) = GitHub::new(
         url.clone(),
         Some(token.clone())
     ) {

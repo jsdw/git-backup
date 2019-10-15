@@ -4,7 +4,7 @@ use lazy_static::lazy_static;
 use crate::error::Error;
 use super::service::{ Service, Repository };
 
-pub struct Github {
+pub struct GitHub {
     /// Which user are we backing up repositories for?
     owner: String,
     /// If we only want to backup a single repository,
@@ -14,8 +14,8 @@ pub struct Github {
     token: Option<String>
 }
 
-impl Github {
-    pub fn new(url: String, token: Option<String>) -> Option<Github> {
+impl GitHub {
+    pub fn new(url: String, token: Option<String>) -> Option<GitHub> {
         lazy_static! {
             static ref HTTP_URL_RE: Regex = Regex::new("^(?:http(?:s)?://)?(?:www\\.)?github(?:\\.com)?/([^/]+)(?:/([^/]+?))?(?:/|\\.git)?$").unwrap();
             static ref SSH_URL_RE: Regex = Regex::new("^(?:git@)?github(?:\\.com)?:([^/.]+)(?:/(.+?)(?:\\.git)?)?$").unwrap();
@@ -29,7 +29,7 @@ impl Github {
         let owner = caps.get(1).unwrap().as_str().to_owned();
         let repository = caps.get(2).map(|c| c.as_str().to_owned());
 
-        Some(Github {
+        Some(GitHub {
             owner, repository, token
         })
     }
@@ -43,7 +43,7 @@ impl Github {
     }
 }
 
-impl Service for Github {
+impl Service for GitHub {
     fn username(&self) -> String {
         self.owner.to_owned()
     }
@@ -61,7 +61,7 @@ impl Service for Github {
 
         // If no token was provided, we can't list every repo:
         let token = self.token.as_ref().ok_or_else(|| {
-            err!("A token must be provided to obtain a list of your Github repositories")
+            err!("A token must be provided to obtain a list of your GitHub repositories")
         })?;
 
         let client = reqwest::Client::new();
@@ -95,7 +95,7 @@ impl Service for Github {
             let status = res.status();
             if !status.is_success() {
                 return Err(match status.as_u16() {
-                    401 => err!("Not authorized: is the personal access token that you provided for Github valid?"),
+                    401 => err!("Not authorized: is the personal access token that you provided for GitHub valid?"),
                     _ => err!("Problem talking to github: {} (code {})", status.canonical_reason().unwrap_or("Unknown"), status.as_str())
                 });
             }
@@ -103,7 +103,7 @@ impl Service for Github {
             // We convert our response back to a loosely typed JSON Value:
             let data: serde_json::Value = res
                 .json()
-                .map_err(|_| err!("Invalid JSON response from Github"))?;
+                .map_err(|_| err!("Invalid JSON response from GitHub"))?;
 
             // Iterate the list of repositories we find, converting to our
             // well typed Repository struct on the way:
@@ -188,7 +188,7 @@ mod test {
             ("jsdw@github.com:git.backup.git", "jsdw", Some("git.backup")),
         ];
         for (url, owner, repo) in urls {
-            if let Some(gh) = Github::new(url.to_owned(), None) {
+            if let Some(gh) = GitHub::new(url.to_owned(), None) {
                 assert_eq!(gh.owner(), owner, "url {} expected owner {} but got {}", url, owner, gh.owner());
                 assert_eq!(gh.repo(), repo, "url {} expected repo {:?} but got {:?}", url, repo, gh.repo());
             } else {

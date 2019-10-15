@@ -4,7 +4,7 @@
 
 A tool to backup all of your personal git repositories from one of the following sources:
 
-- Github
+- GitHub
 - GitLab
 - Bitbucket
 
@@ -45,7 +45,7 @@ git-backup bitbucket/jsdw/my-repo ~/path/to/backups
 
 You can also use this via the `git` command (just remove the hyphen):
 
-```
+```sh
 git backup github/jsdw ~/path/to/backups
 ```
 
@@ -57,13 +57,13 @@ Prebuilt compressed binaries are available [here](https://github.com/jsdw/git-ba
 
 If you like, you can download and decompress the latest release on the commandline. On **MacOS**, run:
 
-```
+```sh
 curl -L https://github.com/jsdw/git-backup/releases/download/v0.1.0/git-backup-v0.1.0-x86_64-apple-darwin.tar.gz | tar -xz
 ```
 
 For **Linux**, run:
 
-```
+```sh
 curl -L https://github.com/jsdw/git-backup/releases/download/v0.1.0/git-backup-v0.1.0-x86_64-unknown-linux-musl.tar.gz | tar -xz
 ```
 
@@ -75,7 +75,7 @@ You must have a recent version of `rust` installed (see [rustup](https://rustup.
 
 Given this, just run:
 
-```
+```sh
 cargo install --git https://github.com/jsdw/git-backup.git --tag v0.1.0
 ```
 
@@ -95,9 +95,9 @@ In GitLab, you'll need to create a new *Personal Access Token* with the `api` sc
 
 Navigate to *Settings -> Access Tokens* to create one, and you'll need to tick the `api` scope.
 
-## Github
+## GitHub
 
-Github also has a notion of a *Personal Access Token*.
+GitHub also has a notion of a *Personal Access Token*.
 
 Navigate to *Settings -> Developer Settings -> Personal Access Tokens -> Generate new token*. You'll need to tick the `repo` scope.
 
