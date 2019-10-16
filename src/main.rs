@@ -12,7 +12,7 @@ use std::path::PathBuf;
 use std::collections::HashSet;
 use std::sync::atomic::{ AtomicU64, Ordering };
 use structopt::StructOpt;
-use services::{ GitHub, GitLab, Bitbucket, Service };
+use services::{ GitHub, GitHubGists, GitLab, Bitbucket, Service };
 
 #[derive(StructOpt, Debug)]
 #[structopt(name = "git-backup", author = "James Wilson <james@jsdw.me>")]
@@ -160,21 +160,26 @@ fn repo_name_to_folder(repo_name: &str) -> String {
 }
 
 fn pick_service(url: String, token: String) -> Option<Box<dyn Service>> {
-    if let Some(gh) = GitHub::new(
+    if let Some(res) = GitHub::new(
         url.clone(),
-        Some(token.clone())
+        token.clone()
     ) {
-        Some(Box::new(gh))
-    } else if let Some(bb) = Bitbucket::new(
+        Some(Box::new(res))
+    } else if let Some(res) = GitHubGists::new(
         url.clone(),
-        Some(token.clone())
+        token.clone()
     ) {
-        Some(Box::new(bb))
-    } else if let Some(gl) = GitLab::new(
+        Some(Box::new(res))
+    } else if let Some(res) = Bitbucket::new(
         url.clone(),
-        Some(token.clone())
+        token.clone()
     ) {
-        Some(Box::new(gl))
+        Some(Box::new(res))
+    } else if let Some(res) = GitLab::new(
+        url.clone(),
+        token.clone()
+    ) {
+        Some(Box::new(res))
     } else {
         None
     }

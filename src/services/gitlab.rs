@@ -6,39 +6,29 @@ use super::service::{ Service, Repository };
 pub struct GitLab {
     /// Which user are we backing up repositories for?
     owner: String,
-    /// If we only want to backup a single repository,
-    /// store it here:
-    repository: Option<String>,
-    /// An access token (needed if storing)
-    token: Option<String>
+    /// An access token
+    token: String
 }
 
 impl GitLab {
-    pub fn new(url: String, token: Option<String>) -> Option<GitLab> {
+    pub fn new(url: String, token: String) -> Option<GitLab> {
         lazy_static! {
-            static ref HTTP_URL_RE: Regex = Regex::new("^(?:http(?:s)?://)?(?:www\\.)?gitlab(?:\\.org)?/([^/]+)(?:/([^/]+?))?(?:/|\\.git)?$").unwrap();
-            static ref SSH_URL_RE: Regex = Regex::new("^(?:git@)?gitlab(?:\\.org)?:([^/.]+)(?:/(.+?)(?:\\.git)?)?$").unwrap();
-            static ref BASIC_SSH_RE: Regex = Regex::new("^([^@]+)@gitlab(?:\\.org)?(?:(?:/|:)(.+?)(?:\\.git)?)?$").unwrap();
+            static ref HTTP_URL_RE: Regex = Regex::new("^(?:http(?:s)?://)?(?:www\\.)?gitlab(?:\\.org)?/([^/]+)(?:/)?$").unwrap();
+            static ref SSH_URL_RE: Regex = Regex::new("^(?:git@)?gitlab(?:\\.org)?:([^/.]+)(?:/)?$").unwrap();
+            static ref BASIC_SSH_RE: Regex = Regex::new("^([^@]+)@gitlab(?:\\.org)?(?:/)?$").unwrap();
         }
-        // In all of the regexs, first capture is owner, second is repo name
+        // In all of the regexs, first capture is owner
         let caps = HTTP_URL_RE.captures(&url)
             .or_else(|| SSH_URL_RE.captures(&url))
             .or_else(|| BASIC_SSH_RE.captures(&url))?;
 
         let owner = caps.get(1).unwrap().as_str().to_owned();
-        let repository = caps.get(2).map(|c| c.as_str().to_owned());
 
-        Some(GitLab {
-            owner, repository, token
-        })
+        Some(GitLab { owner, token })
     }
     #[cfg(test)]
     pub fn owner(&self) -> &str {
         &self.owner
-    }
-    #[cfg(test)]
-    pub fn repo(&self) -> Option<&str> {
-        self.repository.as_ref().map(|s| &**s)
     }
 }
 
@@ -48,21 +38,7 @@ impl Service for GitLab {
     }
     fn list_repositories(&self) -> Result<Vec<Repository>,Error> {
 
-        // If only one repository was asked for, just return it:
-        if let Some(repo) = &self.repository {
-            return Ok(vec![
-                Repository {
-                    git_url: format!("https://gitlab.com/{user}/{repo}.git", user=self.owner, repo=repo),
-                    name: repo.clone()
-                }
-            ])
-        }
-
-        // If no token was provided, we can't list every repo:
-        let token = self.token.as_ref().ok_or_else(|| {
-            err!("A token must be provided to obtain a list of your GitLab repositories")
-        })?;
-
+        let token = &self.token;
         let client = reqwest::Client::new();
 
         let url = format!("https://gitlab.com/api/v4/users/{user}/projects?simple=true&owned=true", user=self.owner);
@@ -118,39 +94,25 @@ mod test {
     #[test]
     fn test_valid_urls() {
         let urls = vec![
-            ("http://www.gitlab.org/jsdw", "jsdw", None),
-            ("http://www.gitlab.org/jsdw/git.backup", "jsdw", Some("git.backup")),
-            ("http://www.gitlab.org/jsdw/git.backup.git", "jsdw", Some("git.backup")),
-            ("http://gitlab.org/jsdw", "jsdw", None),
-            ("http://gitlab.org/jsdw/git.backup", "jsdw", Some("git.backup")),
-            ("http://gitlab.org/jsdw/git.backup.git", "jsdw", Some("git.backup")),
-            ("https://gitlab.org/jsdw", "jsdw", None),
-            ("https://gitlab/jsdw", "jsdw", None),
-            ("https://gitlab.org/jsdw/git.backup", "jsdw", Some("git.backup")),
-            ("https://gitlab.org/jsdw/git.backup.git", "jsdw", Some("git.backup")),
-            ("gitlab.org/jsdw", "jsdw", None),
-            ("gitlab/jsdw", "jsdw", None),
-            ("gitlab.org/jsdw/git.backup", "jsdw", Some("git.backup")),
-            ("gitlab.org/jsdw/git.backup.git", "jsdw", Some("git.backup")),
-            ("git@gitlab.org:jsdw", "jsdw", None),
-            ("git@gitlab.org:jsdw/git.backup", "jsdw", Some("git.backup")),
-            ("git@gitlab.org:jsdw/git.backup.git", "jsdw", Some("git.backup")),
-            ("gitlab.org:jsdw", "jsdw", None),
-            ("gitlab:jsdw", "jsdw", None),
-            ("gitlab.org:jsdw/git.backup", "jsdw", Some("git.backup")),
-            ("gitlab.org:jsdw/git.backup.git", "jsdw", Some("git.backup")),
-            ("jsdw@gitlab.org", "jsdw", None),
-            ("jsdw@gitlab", "jsdw", None),
-            ("jsdw@gitlab.org/git.backup", "jsdw", Some("git.backup")),
-            ("jsdw@gitlab/git.backup", "jsdw", Some("git.backup")),
-            ("jsdw@gitlab.org/git.backup.git", "jsdw", Some("git.backup")),
-            ("jsdw@gitlab.org:git.backup", "jsdw", Some("git.backup")),
-            ("jsdw@gitlab.org:git.backup.git", "jsdw", Some("git.backup")),
+            ("http://www.gitlab.org/jsdw", "jsdw"),
+            ("http://www.gitlab.org/jsdw/", "jsdw"),
+            ("http://gitlab.org/jsdw", "jsdw"),
+            ("https://gitlab.org/jsdw", "jsdw"),
+            ("https://gitlab/jsdw", "jsdw"),
+            ("gitlab.org/jsdw", "jsdw"),
+            ("gitlab.org/jsdw/", "jsdw"),
+            ("gitlab/jsdw", "jsdw"),
+            ("git@gitlab.org:jsdw", "jsdw"),
+            ("git@gitlab.org:jsdw/", "jsdw"),
+            ("gitlab.org:jsdw", "jsdw"),
+            ("gitlab.org:jsdw/", "jsdw"),
+            ("gitlab:jsdw", "jsdw"),
+            ("jsdw@gitlab.org", "jsdw"),
+            ("jsdw@gitlab", "jsdw"),
         ];
-        for (url, owner, repo) in urls {
-            if let Some(gh) = GitLab::new(url.to_owned(), None) {
+        for (url, owner) in urls {
+            if let Some(gh) = GitLab::new(url.to_owned(), "token".to_owned()) {
                 assert_eq!(gh.owner(), owner, "url {} expected owner {} but got {}", url, owner, gh.owner());
-                assert_eq!(gh.repo(), repo, "url {} expected repo {:?} but got {:?}", url, repo, gh.repo());
             } else {
                 panic!("url {} was not parsed properly", url);
             }

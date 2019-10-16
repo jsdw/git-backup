@@ -4,9 +4,11 @@
 
 A tool to backup all of your personal git repositories from one of the following sources:
 
-- GitHub
+- GitHub (either repositories or gists)
 - GitLab
 - Bitbucket
+
+The motivation behind this is that as you acquire more git repositories, and work on different repositories across different machines over a period of time, it's less and less likely that you'll have an uptodate copy of all of your repositories stored in one place (except in the cloud with the git service). This tool makes it easy to obtain a local copy of everything you have on such services so that you can store a backup of them yourself. One use case is running the tool on a self hosted backup server as part of a cron job to maintain uptodate copies of your repositories, or alternatively you might just run it on your local machine periodically to ensure that you have access to the latest version of everything.
 
 To use this tool, you'll need a `token` from the service you want to backup your repositories from (see 'Obtaining a token', below).
 
@@ -29,6 +31,11 @@ git-backup github/jsdw ~/path/to/backups
 git-backup git@github.com/jsdw ~/path/to/backups
 git-backup https://github.com/jsdw ~/path/to/backups
 
+# backing up all gists from github
+# (all of the below and more are fine):
+git-backup gist.github/jsdw ~/path/to/backups
+git-backup https://gist.github.com/jsdw ~/path/to/backups
+
 # backing up all repositories from gitlab
 # (similar formats to the above are accepted):
 git-backup gitlab/jsdw ~/path/to/backups
@@ -36,11 +43,6 @@ git-backup gitlab/jsdw ~/path/to/backups
 # backing up all repositories from bitbucket
 # (similar formats to the above are accepted):
 git-backup bitbucket/jsdw ~/path/to/backups
-
-# backing up a single repository from somewhere:
-git-backup github/jsdw/my-repo ~/path/to/backups
-git-backup gitlab/jsdw/my-repo ~/path/to/backups
-git-backup bitbucket/jsdw/my-repo ~/path/to/backups
 ```
 
 You can also use this via the `git` command (just remove the hyphen):
@@ -58,13 +60,13 @@ Prebuilt compressed binaries are available [here](https://github.com/jsdw/git-ba
 If you like, you can download and decompress the latest release on the commandline. On **MacOS**, run:
 
 ```sh
-curl -L https://github.com/jsdw/git-backup/releases/download/v0.1.0/git-backup-v0.1.0-x86_64-apple-darwin.tar.gz | tar -xz
+curl -L https://github.com/jsdw/git-backup/releases/download/v0.2.0/git-backup-v0.2.0-x86_64-apple-darwin.tar.gz | tar -xz
 ```
 
 For **Linux**, run:
 
 ```sh
-curl -L https://github.com/jsdw/git-backup/releases/download/v0.1.0/git-backup-v0.1.0-x86_64-unknown-linux-musl.tar.gz | tar -xz
+curl -L https://github.com/jsdw/git-backup/releases/download/v0.2.0/git-backup-v0.2.0-x86_64-unknown-linux-musl.tar.gz | tar -xz
 ```
 
 In either case, you'll end up with a `git-backup` binary in your current folder. The examples assume that you have placed this into your `$PATH` so that it can be called from anywhere.
@@ -76,7 +78,7 @@ You must have a recent version of `rust` installed (see [rustup](https://rustup.
 Given this, just run:
 
 ```sh
-cargo install --git https://github.com/jsdw/git-backup.git --tag v0.1.0
+cargo install --git https://github.com/jsdw/git-backup.git --tag v0.2.0
 ```
 
 To install the latest released binary into your `PATH`. You may need to add `--force` if you have already installed a rust binary (for example, a prior version of this tool) with the same name.
@@ -99,7 +101,9 @@ Navigate to *Settings -> Access Tokens* to create one, and you'll need to tick t
 
 GitHub also has a notion of a *Personal Access Token*.
 
-Navigate to *Settings -> Developer Settings -> Personal Access Tokens -> Generate new token*. You'll need to tick the `repo` scope.
+Navigate to *Settings -> Developer Settings -> Personal Access Tokens -> Generate new token*.
+
+For standard repositories you'll need to tick the `repo` scope. If you want to backup all of your gists, you'll also need the `gist` scope (otherwise only public gists will be backed up).
 
 ## Bitbucket
 
